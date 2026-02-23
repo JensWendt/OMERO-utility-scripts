@@ -34,6 +34,9 @@ import omero
 try:
     import regex as re
 except ImportError:
+    print("regex package was not found. Falling back to the native re package."
+          " If you want to utilize more advanced regular expression patterns,"
+          " contact your OMERO administrator about installing the regex package.")
     import re
 from collections import defaultdict
 
@@ -312,8 +315,7 @@ def run_script():
 arranging them into rows or columns as desired.
 Optionally add the Plate to a new or existing Screen.
 See http://help.openmicroscopy.org/scripts.html
-Relies heavily on regular expressions to extract the row and 
-column information from the image names.
+Uses regular expressions to extract the row and column information from the image names.
 To test your regular expression patterns use https://regex101.com.""",
 
         scripts.String(
