@@ -23,3 +23,17 @@ An adaptation of the original `Dataset to Plate` script which utilizes regular e
 It tries to import the `regex` package, but will fall back to the native `re` package if not found.
 
 The logic of associating images with wells has also been adapted, now allowing for wells with a different number of images.
+
+## NumPy compatibility
+
+A full scan of the Python files in this repository confirms that **NumPy is not used anywhere in this codebase** — there are no `import numpy` or `np.*` calls of any kind.
+
+Findings categorised as requested:
+
+| Category | Findings |
+|---|---|
+| (a) Clearly NumPy 2.x-only API | None |
+| (b) Likely incompatible / risky with NumPy 1.26 | None |
+| (c) Compatible with both NumPy 1.26 and 2.x | None — NumPy is not a dependency |
+
+These scripts depend solely on the OMERO Python bindings (`omero`, `omero.gateway`, `omero.scripts`, `omero.model`, `omero.rtypes`), the standard-library `re`/`regex` package, and `collections.defaultdict`. There are no NumPy version compatibility concerns.
