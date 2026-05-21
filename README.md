@@ -27,6 +27,12 @@ The logic of associating images with wells has also been adapted, now allowing f
 ## Rename Images
 A script utilizing regex to modify image names.
 
-Admins can pre-specify patterns that can be easily selected by the end-user via dropdown menu. A simple config.json file on the server is used for that. The path has to be adjusted in the script before the upload, and the file readable for the `omero-server` user.
+Admins can pre-specify patterns that can be easily selected by the end-user via dropdown menu. A simple config.json file on the server is used for that. The path has to be adjusted in the script before the upload, and the file readable for the `omero-server` user.<br>
+The script is able to parse the original metadata which is stored as key-value pairs
+in OMERO and extract values from keys which match the regex pattern. The values extracted are then being matched via a named capture group `index` which has to be in both regex patterns.<br>
+#### Example:<br>
+The image names are **"larvae_12x.czi[Scene #1..15]"** and in the original metadata the value that we want to replace "Scene #1" with is behind the key **Information|Image|S|Scene|Name #1..15 = xxxx**.<br>
+`Pattern_to_be_replaced` would have to be **Scene #(?P\<index>\\d+)** and `Replacement_Pattern` **Information\\|Image\\|S\\|Scene\\|Name #(?P\<index>\\d+)**<br>
+The script than parses all the values from the matching keys of the original metadata and replaces them based on the `index` capture group with corresponding regex match in the image name.
 
-If a custom pattern is needed. Users simply select `Custom_Pattern` in the dropdown menu and click the `Custom Pattern` checkbox. Then they can choose to use simple literal replacement patterns or regex based patterns via the `Regex Pattern` checkbox.
+If a custom pattern is needed. Users simply select `Custom_Pattern` in the dropdown menu and click the `Custom Pattern` checkbox. Then they can choose to use simple literal replacement patterns or regex based patterns via the `Regex Pattern` checkbox. This will not utilize the original metadata (for now).

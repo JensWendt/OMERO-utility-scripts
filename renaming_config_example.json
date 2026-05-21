@@ -1,11 +1,13 @@
 {
     "Axio Observer.Z1_Bischoff":{
         "Regex": true,
+        "Original_metadata": true,
         "Pattern_to_be_replaced": "Scene #(?P<index>\\d+)",
         "Replacement_Pattern": "Information\\|Image\\|S\\|Scene\\|Name #(?P<index>\\d+)"
     },
     "Simple_Replace_Example": {
         "Regex": false,
+        "Original_metadata": false,
         "Pattern_to_be_replaced": "old_text",
         "Replacement_Pattern": "new_text"
     },
