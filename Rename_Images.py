@@ -40,7 +40,7 @@ from omero.gateway import BlitzGateway
 # special imports
 from omero.rtypes import rlong, rstring
 
-CONFIG_PATH = "/opt/omero/MiN_Rename_Images_config.json"
+CONFIG_PATH = "/opt/omero/Rename_Images_config.json"
 
 
 def collect_images(conn, data_type, ids):

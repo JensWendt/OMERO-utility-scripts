@@ -23,3 +23,10 @@ An adaptation of the original `Dataset to Plate` script which utilizes regular e
 It tries to import the `regex` package, but will fall back to the native `re` package if not found.
 
 The logic of associating images with wells has also been adapted, now allowing for wells with a different number of images.
+
+## Rename Images
+A script utilizing regex to modify image names.
+
+Admins can pre-specify patterns that can be easily selected by the end-user via dropdown menu. A simple config.json file on the server is used for that. The path has to be adjusted in the script before the upload, and the file readable for the `omero-server` user.
+
+If a custom pattern is needed. Users simply select `Custom_Pattern` in the dropdown menu and click the `Custom Pattern` checkbox. Then they can choose to use simple literal replacement patterns or regex based patterns via the `Regex Pattern` checkbox.
