@@ -239,6 +239,7 @@ def set_new_names(conn, script_params, specification):
         pattern_to_be_replaced = script_params["Pattern_to_be_replaced"]
         replacement_pattern = script_params["Replacement_Pattern"]
         regex_pattern = script_params.get("Regex_Pattern", True)
+        utilize_original_metadata = script_params.get("Utilize_original_metadata", False)
     else:
         pattern_to_be_replaced = specification["Pattern_to_be_replaced"]
         replacement_pattern = specification["Replacement_Pattern"]
@@ -246,6 +247,12 @@ def set_new_names(conn, script_params, specification):
         regex_pattern = specification.get("Regex")
         if regex_pattern is None:
             regex_pattern = script_params.get("Regex_Pattern", True)
+
+        # Config option uses "Original_metadata"; fall back to script parameter for compatibility.
+        utilize_original_metadata = specification.get("Original_metadata")
+        if utilize_original_metadata is None:
+            utilize_original_metadata = script_params.get("Utilize_original_metadata", False)
+            print("WARNING: 'Original_metadata' option not found in config; falling back to script parameter 'Utilize_original_metadata'.")
 
     if pattern_to_be_replaced is None:
         raise ValueError("Pattern to be replaced cannot be None.")
@@ -266,21 +273,22 @@ def set_new_names(conn, script_params, specification):
     except re.error as err:
         raise ValueError(f"Invalid regex pattern '{effective_pattern_to_be_replaced}': {err}")
 
-    if "(?P<index>" in replacement_pattern and "|" in replacement_pattern and r"\|" not in replacement_pattern:
-        print(
-            "WARNING: Replacement_Pattern contains unescaped '|'. In regex this means alternation. "
-            "If metadata keys contain literal pipes, escape them as '\\|'."
-        )
-
     compiled_replacement_key_pattern = None
     shared_group_names = set()
-    try:
-        compiled_replacement_key_pattern = re.compile(replacement_pattern)
-        shared_group_names = set(compiled_pattern.groupindex).intersection(
-            compiled_replacement_key_pattern.groupindex
-        )
-    except re.error:
-        compiled_replacement_key_pattern = None
+    if utilize_original_metadata:
+        if "|" in replacement_pattern and r"\|" not in replacement_pattern:
+            print(
+                "WARNING: Replacement_Pattern contains unescaped '|'. In regex this means alternation. "
+                "If metadata keys contain literal pipes, escape them as '\\|'."
+            )
+
+        try:
+            compiled_replacement_key_pattern = re.compile(replacement_pattern)
+            shared_group_names = set(compiled_pattern.groupindex).intersection(
+                compiled_replacement_key_pattern.groupindex
+            )
+        except re.error:
+            compiled_replacement_key_pattern = None
 
     for image in images:
         old_name = image.getName()
@@ -288,35 +296,39 @@ def set_new_names(conn, script_params, specification):
         if regex_match is None:
             continue
 
-        metadata = get_original_metadata(image.getId(), conn)
-        resolved_value = resolve_replacement_value(
-            regex_match,
-            replacement_pattern,
-            metadata,
-            metadata_key_pattern=compiled_replacement_key_pattern,
-            shared_group_names=shared_group_names
-        )
+        if utilize_original_metadata:
+            metadata = get_original_metadata(image.getId(), conn)
+            resolved_value = resolve_replacement_value(
+                regex_match,
+                replacement_pattern,
+                metadata,
+                metadata_key_pattern=compiled_replacement_key_pattern,
+                shared_group_names=shared_group_names
+            )
 
-        if resolved_value is not None:
-            new_name = compiled_pattern.sub(resolved_value, old_name, count=1)
+            if resolved_value is not None:
+                new_name = compiled_pattern.sub(resolved_value, old_name, count=1)
+            else:
+                index = extract_match_index(regex_match)
+                if index is not None:
+                    print_metadata_index_debug(
+                        image,
+                        index,
+                        replacement_pattern,
+                        metadata,
+                        metadata_key_pattern=compiled_replacement_key_pattern,
+                    )
+                    warning = (
+                        f"Could not rename image ID {image.getId()} ('{old_name}'): "
+                        f"no metadata key matched index '{index}'."
+                    )
+                    print(f"WARNING: {warning}")
+                    warnings.append(warning)
+                    continue
+
+                new_name = compiled_pattern.sub(replacement_pattern, old_name, count=1)
         else:
-            index = extract_match_index(regex_match)
-            if index is not None:
-                print_metadata_index_debug(
-                    image,
-                    index,
-                    replacement_pattern,
-                    metadata,
-                    metadata_key_pattern=compiled_replacement_key_pattern,
-                )
-                warning = (
-                    f"Could not rename image ID {image.getId()} ('{old_name}'): "
-                    f"no metadata key matched index '{index}'."
-                )
-                print(f"WARNING: {warning}")
-                warnings.append(warning)
-                continue
-
+            # Simple mode: only replace name pattern directly, without metadata/index logic.
             new_name = compiled_pattern.sub(replacement_pattern, old_name, count=1)
 
         if new_name != old_name:
@@ -324,8 +336,8 @@ def set_new_names(conn, script_params, specification):
             image.save()
             image_counter += 1
 
-    message = "Unified replacement mode."
-    if warnings:
+    message = "Metadata-aware replacement mode." if utilize_original_metadata else "Simple replacement mode."
+    if utilize_original_metadata and warnings:
         message += f" Skipped {len(warnings)} image(s) because no index-based metadata match was found."
         max_details = 10
         details = " | ".join(warnings[:max_details])
@@ -380,12 +392,17 @@ def run_script():
             "Regex_Pattern", grouping="4.1", optional=False, default=False,
             description="Will the patterns be Regex patterns?\nTo try out Regex patterns, utilize regex101.com."),
 
+        scripts.Bool(
+            "Utilize_original_metadata", grouping="4.2", optional=False, default=False,
+            description="If enabled, the script will search the original metadata of the image for keys" \
+            " matching the Replacement_Pattern and use the corresponding value for renaming." ),
+
         scripts.String(
-            "Pattern_to_be_replaced", grouping="4.2", optional=True, default="[a-zA-Z]+_[a-zA-Z]+(?=_)",
+            "Pattern_to_be_replaced", grouping="4.3", optional=True, default="[a-zA-Z]+_[a-zA-Z]+(?=_)",
             description="Pattern to be replaced in the image names."),
 
         scripts.String(
-            "Replacement_Pattern", grouping="4.3", optional=True, default="Project_12",
+            "Replacement_Pattern", grouping="4.4", optional=True, default="Project_12",
             description="Pattern to replace the matched regex pattern."),
 
         version="0.2",
